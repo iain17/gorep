@@ -90,6 +90,7 @@ func main() {
 			if isExists {
 				for ban, replace := range bans {
 					content = strings.Replace(content, ban, replace, -1)
+					content = strings.Replace(content, ban, replace, -1)
 				}
 				found = append(found, path)
 			}
