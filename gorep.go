@@ -65,7 +65,6 @@ func main() {
 
 			for ban, replace := range bans {
 				content = strings.Replace(content, ban, replace, -1)
-				content = strings.Replace(content, ban, replace, -1)
 			}
 
 			err = ioutil.WriteFile(path, []byte(content), info.Mode())
