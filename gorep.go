@@ -93,6 +93,7 @@ func main() {
 			newPath = strings.Replace(path, info.Name(), newPath, -1)
 		}
 		os.Rename(path, newPath)
+		println(fmt.Sprintf("Replacing %s with %s", path, newPath))
 	}
 
 }
