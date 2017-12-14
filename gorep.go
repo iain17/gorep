@@ -37,63 +37,68 @@ func main() {
 		flagPath, _ = os.Getwd()
 	}
 
-	pathsFound := []string{}
+	found := true
+	for found {
 
-	err := filepath.Walk(flagPath, func(path string, info os.FileInfo, err error) error {
-		for ban, _ := range bans {
-			if strings.Contains(path, ban) {
-				if info.IsDir() {
-					pathsFound = append(pathsFound, path)
-				} else {
-					pathsFound = append([]string{path}, pathsFound...)
+		pathsFound := []string{}
+
+		err := filepath.Walk(flagPath, func(path string, info os.FileInfo, err error) error {
+			for ban, _ := range bans {
+				if strings.Contains(path, ban) {
+					if info.IsDir() {
+						pathsFound = append(pathsFound, path)
+					} else {
+						pathsFound = append([]string{path}, pathsFound...)
+					}
 				}
 			}
-		}
-		if info.IsDir() {
+			if info.IsDir() {
+				return nil
+			}
+
+			bts, err := ioutil.ReadFile(path)
+			if err != nil {
+				return err
+			}
+
+			content := string(bts)
+
+			for ban, replace := range bans {
+				content = strings.Replace(content, ban, replace, -1)
+				content = strings.Replace(content, ban, replace, -1)
+			}
+
+			err = ioutil.WriteFile(path, []byte(content), info.Mode())
+			if err != nil {
+				return err
+			}
+
 			return nil
-		}
+		})
 
-		bts, err := ioutil.ReadFile(path)
 		if err != nil {
-			return err
+			fmt.Println("ERROR", err.Error())
 		}
 
-		content := string(bts)
-
-		for ban, replace := range bans {
-			content = strings.Replace(content, ban, replace, -1)
-			content = strings.Replace(content, ban, replace, -1)
+		for _, path := range pathsFound {
+			info, err := os.Stat(path)
+			if err != nil {
+				continue
+			}
+			newPath := path
+			if !info.IsDir() {
+				newPath = info.Name()
+			}
+			for ban, replace := range bans {
+				newPath = strings.Replace(newPath, ban, replace, -1)
+			}
+			if !info.IsDir() {
+				newPath = strings.Replace(path, info.Name(), newPath, -1)
+			}
+			os.Rename(path, newPath)
+			println(fmt.Sprintf("Replacing %s with %s", path, newPath))
 		}
-
-		err = ioutil.WriteFile(path, []byte(content), info.Mode())
-		if err != nil {
-			return err
-		}
-
-		return nil
-	})
-
-	if err != nil {
-		fmt.Println("ERROR", err.Error())
-	}
-
-	for _, path := range pathsFound {
-		info, err := os.Stat(path)
-		if err != nil {
-			continue
-		}
-		newPath := path
-		if !info.IsDir() {
-			newPath = info.Name()
-		}
-		for ban, replace := range bans {
-			newPath = strings.Replace(newPath, ban, replace, -1)
-		}
-		if !info.IsDir() {
-			newPath = strings.Replace(path, info.Name(), newPath, -1)
-		}
-		os.Rename(path, newPath)
-		println(fmt.Sprintf("Replacing %s with %s", path, newPath))
+		found = len(pathsFound) > 0
 	}
 
 }
