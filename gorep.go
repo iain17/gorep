@@ -8,22 +8,28 @@ import "strings"
 import "io/ioutil"
 import "regexp"
 import "os"
+import "github.com/Pallinder/go-randomdata"
 
 func main() {
-	var flagPath, flagFrom, flagTo string
+	var flagPath, flagBanned string
 	flag.StringVar(&flagPath, "path", "", "path files to replace")
-	flag.StringVar(&flagFrom, "from", "", "strings to replace")
-	flag.StringVar(&flagTo, "to", "", "strings to replace")
+	flag.StringVar(&flagBanned, "banned", "", "comma separated words that are banned")
 	flag.Parse()
-
-	if flagFrom == "" {
-		fmt.Println("ERROR", `argument -from="" is required`)
+	banned := strings.Split(flagBanned, ",")
+	if flagBanned == "" || len(banned) == 0 {
+		fmt.Println("ERROR", `argument -banned="" is required. Remember comma separated`)
 		return
 	}
 
-	if flagTo == "" {
-		fmt.Println("ERROR", `argument -to="" is required`)
-		return
+	bans := map[string]string{}
+	unique := map[string]bool{}
+	for _, ban := range banned {
+		//Keep trying new replacements until we find a unique one again.
+		var replace string
+		for replace == "" || unique[replace] {
+			replace = randomdata.SillyName()
+		}
+		bans[ban] = replace
 	}
 
 	if flagPath == "." || flagPath == "" {
@@ -45,6 +51,13 @@ func main() {
 	found := []string{}
 
 	err = filepath.Walk(flagPath, func(path string, info os.FileInfo, err error) error {
+		if info.IsDir() {
+			for ban, replace := range bans {
+				if strings.Contains(info.Name(), ban) {
+					os.Rename(path, strings.Replace(path, ban, replace, -1))
+				}
+			}
+		}
 		if filepath.Ext(path) == ".go" {
 			bts, err := ioutil.ReadFile(path)
 			if err != nil {
@@ -64,17 +77,20 @@ func main() {
 					}
 
 					for _, eachSubline := range matchesInline {
-						if strings.Contains(eachSubline, flagFrom) {
-							isExists = true
-							break isReplacable
+						for ban, _ := range bans {
+							if strings.Contains(eachSubline, ban) {
+								isExists = true
+								break isReplacable
+							}
 						}
 					}
 				}
 			}
 
 			if isExists {
-				content = strings.Replace(content, `"`+flagFrom+`"`, `"`+flagTo+`"`, -1)
-				content = strings.Replace(content, `"`+flagFrom+`/`, `"`+flagTo+`/`, -1)
+				for ban, replace := range bans {
+					content = strings.Replace(content, ban, replace, -1)
+				}
 				found = append(found, path)
 			}
 
