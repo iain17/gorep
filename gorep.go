@@ -1,13 +1,15 @@
 package main
 
-import "path/filepath"
-import "flag"
-import "fmt"
+import (
+	"path/filepath"
+	"flag"
+	"fmt"
 
-import "strings"
-import "io/ioutil"
-import "os"
-import "github.com/Pallinder/go-randomdata"
+	"strings"
+	"io/ioutil"
+	"os"
+	"github.com/Pallinder/go-randomdata"
+)
 
 func main() {
 	var flagPath, flagBanned string
@@ -35,15 +37,19 @@ func main() {
 		flagPath, _ = os.Getwd()
 	}
 
-	found := []string{}
+	pathsFound := []string{}
 
 	err := filepath.Walk(flagPath, func(path string, info os.FileInfo, err error) error {
-		if info.IsDir() {
-			for ban, replace := range bans {
-				if strings.Contains(info.Name(), ban) {
-					os.Rename(path, strings.Replace(path, ban, replace, -1))
+		for ban, _ := range bans {
+			if strings.Contains(path, ban) {
+				if info.IsDir() {
+					pathsFound = append(pathsFound, path)
+				} else {
+					pathsFound = append([]string{path}, pathsFound...)
 				}
 			}
+		}
+		if info.IsDir() {
 			return nil
 		}
 
@@ -58,7 +64,6 @@ func main() {
 			content = strings.Replace(content, ban, replace, -1)
 			content = strings.Replace(content, ban, replace, -1)
 		}
-		found = append(found, path)
 
 		err = ioutil.WriteFile(path, []byte(content), info.Mode())
 		if err != nil {
@@ -72,14 +77,22 @@ func main() {
 		fmt.Println("ERROR", err.Error())
 	}
 
-	for _, path := range found {
-		fmt.Printf("found in %s\n", path)
-	}
-
-	if len(found) == 0 {
-		fmt.Println("Nothing replaced")
-	} else {
-		fmt.Printf("Total %d file replaced\n", len(found))
+	for _, path := range pathsFound {
+		info, err := os.Stat(path)
+		if err != nil {
+			continue
+		}
+		newPath := path
+		if !info.IsDir() {
+			newPath = info.Name()
+		}
+		for ban, replace := range bans {
+			newPath = strings.Replace(newPath, ban, replace, -1)
+		}
+		if !info.IsDir() {
+			newPath = strings.Replace(path, info.Name(), newPath, -1)
+		}
+		os.Rename(path, newPath)
 	}
 
 }
