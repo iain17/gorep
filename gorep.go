@@ -42,9 +42,6 @@ func main() {
 		if info.IsDir() {
 			return nil
 		}
-		if info.Mode() == os.ModeSymlink {
-			return nil
-		}
 		newPath := basedir+path
 		for ban, replace := range bans {
 			newPath = strings.Replace(newPath, ban, replace, -1)
@@ -52,7 +49,8 @@ func main() {
 		
 		bts, err := ioutil.ReadFile(path)
 		if err != nil {
-			return err
+			fmt.Println(err)
+			return nil
 		}
 
 		content := string(bts)
