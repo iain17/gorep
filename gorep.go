@@ -42,6 +42,9 @@ func main() {
 		if info.IsDir() {
 			return nil
 		}
+		if info.Mode() == os.ModeSymlink {
+			return nil
+		}
 		newPath := basedir+path
 		for ban, replace := range bans {
 			newPath = strings.Replace(newPath, ban, replace, -1)
