@@ -4,9 +4,9 @@ import (
 	"path/filepath"
 	"flag"
 	"fmt"
-
-	"strings"
 	"io/ioutil"
+	"strings"
+	"time"
 	"os"
 	"github.com/Pallinder/go-randomdata"
 )
@@ -37,67 +37,40 @@ func main() {
 		flagPath, _ = os.Getwd()
 	}
 
-	found := true
-	for found {
-
-		pathsFound := []string{}
-
-		err := filepath.Walk(flagPath, func(path string, info os.FileInfo, err error) error {
-			for ban, _ := range bans {
-				if strings.Contains(path, ban) {
-					if info.IsDir() {
-						pathsFound = append(pathsFound, path)
-					} else {
-						pathsFound = append([]string{path}, pathsFound...)
-					}
-				}
-			}
-			if info.IsDir() {
-				return nil
-			}
-
-			bts, err := ioutil.ReadFile(path)
-			if err != nil {
-				return err
-			}
-
-			content := string(bts)
-
-			for ban, replace := range bans {
-				content = strings.Replace(content, ban, replace, -1)
-			}
-
-			err = ioutil.WriteFile(path, []byte(content), info.Mode())
-			if err != nil {
-				return err
-			}
-
+	basedir := "/tmp/"+time.Now().String()+"/"
+	err := filepath.Walk(flagPath, func(path string, info os.FileInfo, err error) error {
+		if info.IsDir() {
 			return nil
-		})
-
+		}
+		newPath := basedir+path
+		for ban, replace := range bans {
+			newPath = strings.Replace(newPath, ban, replace, -1)
+		}
+		
+		bts, err := ioutil.ReadFile(path)
 		if err != nil {
-			fmt.Println("ERROR", err.Error())
+			return err
 		}
 
-		for _, path := range pathsFound {
-			info, err := os.Stat(path)
-			if err != nil {
-				continue
-			}
-			newPath := path
-			if !info.IsDir() {
-				newPath = info.Name()
-			}
-			for ban, replace := range bans {
-				newPath = strings.Replace(newPath, ban, replace, -1)
-			}
-			if !info.IsDir() {
-				newPath = strings.Replace(path, info.Name(), newPath, -1)
-			}
-			os.Rename(path, newPath)
-			println(fmt.Sprintf("Replacing %s with %s", path, newPath))
+		content := string(bts)
+		for ban, replace := range bans {
+			content = strings.Replace(content, ban, replace, -1)
 		}
-		found = len(pathsFound) > 0
+		os.MkdirAll(filepath.Dir(newPath), 0777)
+
+		err = ioutil.WriteFile(newPath, []byte(content), info.Mode())
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+
+	os.RemoveAll(flagPath)
+	os.Rename(basedir+flagPath, flagPath+"/")
+
+	if err != nil {
+		panic(err)
 	}
 
 }
